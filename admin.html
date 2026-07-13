@@ -224,8 +224,7 @@
   </div>
 
   <script>
-    // आपका Google Web App URL यहाँ जुड़ चुका है
-    const DATABASE_URL = "https://script.google.com/macros/s/AKfycbxD6Cngagch5RzIReniAl9zNPh37wPQiO_iAQQOBSW72SvYAkdcCFOWd-8KkZ8I95S8Ww/exec";
+    const DATABASE_URL = "https://script.google.com/macros/s/AKfycbzs1dTTHkgjnJ5SQH73O-4gbeB8jgzMx8R7Xf8pLRNrb78IJqMcIgKCy1lIGgTYpG1EgA/exec";
 
     let adminPass = localStorage.getItem("system_admin_password") || "";
 
@@ -234,31 +233,40 @@
       loadInitialData();
     }
 
+    // CORS Safe Request Wrapper
+    async function makeSecurePost(payload) {
+      try {
+        const res = await fetch(DATABASE_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify(payload),
+          redirect: "follow"
+        });
+        return await res.json();
+      } catch (err) {
+        return { success: false, error: "Network Error: " + err.message };
+      }
+    }
+
     async function attemptLogin() {
       const pass = document.getElementById("adminPassInput").value;
-      const res = await fetch(DATABASE_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "adminLogin", auth_password: pass })
-      });
-      const data = await res.json();
+      const data = await makeSecurePost({ action: "adminLogin", auth_password: pass });
       if (data.success) {
         adminPass = pass;
         localStorage.setItem("system_admin_password", pass);
         document.getElementById("loginScreen").style.display = "none";
         loadInitialData();
       } else {
-        alert("गलत पासवर्ड!");
+        alert(data.error || "गलत पासवर्ड!");
       }
     }
 
     async function changeAdminPassword(e) {
       e.preventDefault();
       const newPass = document.getElementById("newAdminPass").value.trim();
-      const res = await fetch(DATABASE_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "changeAdminPassword", auth_password: adminPass, new_password: newPass })
-      });
-      const data = await res.json();
+      const data = await makeSecurePost({ action: "changeAdminPassword", auth_password: adminPass, new_password: newPass });
       if(data.success) {
         alert("पासवर्ड सफलतापूर्वक बदल गया! दोबारा लॉगिन करें।");
         localStorage.removeItem("system_admin_password");
@@ -367,12 +375,13 @@
         short_story: document.getElementById("postStory").value.trim(),
         category: document.getElementById("postCategory").value.trim()
       };
-      const res = await fetch(DATABASE_URL, { method: "POST", body: JSON.stringify(body) });
-      const data = await res.json();
+      const data = await makeSecurePost(body);
       if(data.success) {
         alert("सफलतापूर्वक पोस्ट बन गई!");
         document.getElementById("addPostForm").reset();
         fetchPosts();
+      } else {
+        alert("त्रुटि: " + data.error);
       }
     }
 
@@ -386,36 +395,33 @@
         original_link: document.getElementById("epLink").value.trim(),
         play_link: document.getElementById("epPlay").value.trim()
       };
-      const res = await fetch(DATABASE_URL, { method: "POST", body: JSON.stringify(body) });
-      const data = await res.json();
+      const data = await makeSecurePost(body);
       if(data.success) {
         alert("सफलतापूर्वक एपिसोड जुड़ गया!");
         closeModal();
+      } else {
+        alert("त्रुटि: " + data.error);
       }
     }
 
     async function deleteFullPost(id) {
       if(confirm("क्या आप पूरी पोस्ट और इसके एपिसोड्स डिलीट करना चाहते हैं?")) {
-        const res = await fetch(DATABASE_URL, {
-          method: "POST",
-          body: JSON.stringify({ action: "deletePost", auth_password: adminPass, post_id: id })
-        });
-        const data = await res.json();
+        const data = await makeSecurePost({ action: "deletePost", auth_password: adminPass, post_id: id });
         if(data.success) {
           alert("पोस्ट और एपिसोड्स हटा दिए गए।");
           fetchPosts();
+        } else {
+          alert("त्रुटि: " + data.error);
         }
       }
     }
 
     async function fetchShorteners() {
-      const res = await fetch(DATABASE_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "getShorteners", auth_password: adminPass })
-      });
-      const data = await res.json();
+      const data = await makeSecurePost({ action: "getShorteners", auth_password: adminPass });
       const list = document.getElementById("shortenerList");
-      if(data.length === 0) {
+      if(data.error) {
+        list.innerHTML = `<div style='padding:15px; color:#555;'>No shorteners set.</div>`;
+      } else if(data.length === 0) {
         list.innerHTML = "<div style='padding:15px; color:#555;'>No shorteners set.</div>";
       } else {
         list.innerHTML = data.map(sh => `
@@ -435,34 +441,25 @@
         dashboard_url: document.getElementById("dashUrl").value.trim(),
         api_key: document.getElementById("apiKey").value.trim()
       };
-      const res = await fetch(DATABASE_URL, { method: "POST", body: JSON.stringify(body) });
-      const data = await res.json();
+      const data = await makeSecurePost(body);
       if(data.success) {
         alert("शॉर्टनर जोड़ा गया!");
         document.getElementById("shortenerForm").reset();
         fetchShorteners();
+      } else {
+        alert("त्रुटि: " + data.error);
       }
     }
 
     async function deleteShortener(id) {
-      const res = await fetch(DATABASE_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "deleteShortener", auth_password: adminPass, id: id })
-      });
-      const data = await res.json();
-      if(data.success) {
-        fetchShorteners();
-      }
+      const data = await makeSecurePost({ action: "deleteShortener", auth_password: adminPass, id: id });
+      if(data.success) fetchShorteners();
     }
 
     async function fetchPremiumUsers() {
-      const res = await fetch(DATABASE_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "getPremiumUsers", auth_password: adminPass })
-      });
-      const data = await res.json();
+      const data = await makeSecurePost({ action: "getPremiumUsers", auth_password: adminPass });
       const list = document.getElementById("premiumUsersList");
-      if (data.length === 0) {
+      if (data.error || data.length === 0) {
         list.innerHTML = "<div style='padding:15px; color:#555;'>No premium accounts found.</div>";
       } else {
         list.innerHTML = data.map(u => `
@@ -485,31 +482,25 @@
         gmail: document.getElementById("premUser").value.trim(),
         password: document.getElementById("premPass").value.trim()
       };
-      const res = await fetch(DATABASE_URL, { method: "POST", body: JSON.stringify(body) });
-      const data = await res.json();
+      const data = await makeSecurePost(body);
       if(data.success) {
         alert("प्रीमियम यूजर पंजीकृत हो गया!");
         document.getElementById("premiumForm").reset();
         fetchPremiumUsers();
+      } else {
+        alert("त्रुटि: " + data.error);
       }
     }
 
     async function deletePremium(id) {
-      const res = await fetch(DATABASE_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "deletePremium", auth_password: adminPass, id: id })
-      });
-      if((await res.json()).success) fetchPremiumUsers();
+      const data = await makeSecurePost({ action: "deletePremium", auth_password: adminPass, id: id });
+      if(data.success) fetchPremiumUsers();
     }
 
     async function fetchPaidRequests() {
-      const res = await fetch(DATABASE_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "getPaidRequests", auth_password: adminPass })
-      });
-      const data = await res.json();
+      const data = await makeSecurePost({ action: "getPaidRequests", auth_password: adminPass });
       const list = document.getElementById("paidRequestsList");
-      if(data.length === 0) {
+      if(data.error || data.length === 0) {
         list.innerHTML = "<div style='padding:15px; color:#555;'>No locked links found.</div>";
       } else {
         list.innerHTML = data.map(req => `
@@ -532,20 +523,19 @@
         password: document.getElementById("paidPass").value.trim(),
         original_link: document.getElementById("paidUrl").value.trim()
       };
-      const res = await fetch(DATABASE_URL, { method: "POST", body: JSON.stringify(body) });
-      if((await res.json()).success) {
+      const data = await makeSecurePost(body);
+      if(data.success) {
         alert("लॉक किया गया लिंक जोड़ दिया गया!");
         document.getElementById("paidRequestsForm").reset();
         fetchPaidRequests();
+      } else {
+        alert("त्रुटि: " + data.error);
       }
     }
 
     async function deletePaidRequest(id) {
-      const res = await fetch(DATABASE_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "deletePaidRequest", auth_password: adminPass, id: id })
-      });
-      if((await res.json()).success) fetchPaidRequests();
+      const data = await makeSecurePost({ action: "deletePaidRequest", auth_password: adminPass, id: id });
+      if(data.success) fetchPaidRequests();
     }
 
     async function fetchSettings() {
@@ -564,9 +554,11 @@
         group_link: document.getElementById("groupLink").value.trim(),
         player_password: document.getElementById("playerPass").value.trim()
       };
-      const res = await fetch(DATABASE_URL, { method: "POST", body: JSON.stringify(body) });
-      if((await res.json()).success) {
+      const data = await makeSecurePost(body);
+      if(data.success) {
         alert("सेटिंग्स अपडेट हो गयीं!");
+      } else {
+        alert("त्रुटि: " + data.error);
       }
     }
 
