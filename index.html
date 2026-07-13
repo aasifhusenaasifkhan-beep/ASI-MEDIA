@@ -172,8 +172,7 @@
   </div>
 
   <script>
-    // आपका Google Web App URL यहाँ जुड़ चुका है
-    const DATABASE_URL = "https://script.google.com/macros/s/AKfycbxD6Cngagch5RzIReniAl9zNPh37wPQiO_iAQQOBSW72SvYAkdcCFOWd-8KkZ8I95S8Ww/exec";
+    const DATABASE_URL = "https://script.google.com/macros/s/AKfycbzs1dTTHkgjnJ5SQH73O-4gbeB8jgzMx8R7Xf8pLRNrb78IJqMcIgKCy1lIGgTYpG1EgA/exec";
 
     let allPosts = [];
     let settings = {};
@@ -193,6 +192,23 @@
         document.getElementById("tgChannel").href = settings.channel_link || "#";
         document.getElementById("tgGroup").href = settings.group_link || "#";
       } catch(e){}
+    }
+
+    // Secure CORS-Bypass request helper for index page POSTs
+    async function makeSecurePost(payload) {
+      try {
+        const res = await fetch(DATABASE_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify(payload),
+          redirect: "follow"
+        });
+        return await res.json();
+      } catch (err) {
+        return { success: false, error: "Network Error: " + err.message };
+      }
     }
 
     function renderPosts(posts) {
@@ -301,11 +317,7 @@
 
     async function verifyPlayer(epId) {
       const pass = document.getElementById("playPassInput").value.trim();
-      const res = await fetch(DATABASE_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "verifyPlayer", password: pass, ep_id: epId })
-      });
-      const data = await res.json();
+      const data = await makeSecurePost({ action: "verifyPlayer", password: pass, ep_id: epId });
       if(data.success) {
         window.open(data.play_link, "_blank");
         closeModal();
@@ -329,22 +341,14 @@
       const gmail = document.getElementById("premGmail").value.trim();
       const pass = document.getElementById("premPass").value.trim();
       
-      const res = await fetch(DATABASE_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "premiumLogin", username: gmail, password: pass })
-      });
-      const data = await res.json();
+      const data = await makeSecurePost({ action: "premiumLogin", username: gmail, password: pass });
       if (data.success) {
-        const bypassRes = await fetch(DATABASE_URL, {
-          method: "POST",
-          body: JSON.stringify({ 
-            action: "premiumBypass", 
-            username: data.username, 
-            session_token: data.session_token, 
-            ep_id: epId 
-          })
+        const bypassData = await makeSecurePost({ 
+          action: "premiumBypass", 
+          username: data.username, 
+          session_token: data.session_token, 
+          ep_id: epId 
         });
-        const bypassData = await bypassRes.json();
         if(bypassData.success) {
           window.open(bypassData.original_link, "_blank");
           closeModal();
@@ -369,11 +373,7 @@
 
     async function unlockPaidRequest() {
       const pass = document.getElementById("paidKeyInput").value.trim();
-      const res = await fetch(DATABASE_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "resolvePaidRequest", password: pass })
-      });
-      const data = await res.json();
+      const data = await makeSecurePost({ action: "resolvePaidRequest", password: pass });
       if(data.success) {
         window.open(data.original_link, "_blank");
         closeModal();
