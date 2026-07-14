@@ -237,7 +237,7 @@
       loadInitialData();
     }
 
-    // CORS Safe Request Wrapper with Auto-Logout on Authorization failure
+    // CORS Safe Request Wrapper
     async function makeSecurePost(payload) {
       try {
         const res = await fetch(DATABASE_URL, {
@@ -252,9 +252,12 @@
         
         // सुरक्षा जांच: यदि सर्वर अनऑथराइज्ड बताता है, तो तुरंत लॉगआउट करें
         if (data.error === "Unauthorized Admin") {
-          alert("त्रुटि: एडमिन ऑथराइजेशन फेल! कृपया फिर से लॉगिन करें।");
-          localStorage.removeItem("system_admin_password");
-          location.reload();
+          // केवल तब रीलोड करें जब यूजर पहले से लॉग इन स्थिति में था
+          if (localStorage.getItem("system_admin_password")) {
+            alert("त्रुटि: एडमिन ऑथराइजेशन फेल! कृपया फिर से लॉगिन करें।");
+            localStorage.removeItem("system_admin_password");
+            location.reload();
+          }
           return { success: false, error: "Unauthorized Admin" };
         }
         
@@ -273,7 +276,8 @@
         document.getElementById("loginScreen").style.display = "none";
         loadInitialData();
       } else {
-        alert(data.error || "गलत पासवर्ड!");
+        // यदि लॉगिन स्क्रीन पर हैं तो केवल 'गलत पासवर्ड' दिखाएं, डबल अलर्ट नहीं
+        alert("गलत पासवर्ड! कृपया सही पासवर्ड डालें।");
       }
     }
 
