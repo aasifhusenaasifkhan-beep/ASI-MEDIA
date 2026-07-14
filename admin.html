@@ -228,8 +228,7 @@
   </div>
 
   <script>
-    // आपका नया Google Web App URL
-    const DATABASE_URL = "https://script.google.com/macros/s/AKfycbz10cUTT2dgJ6nQzkt0SnQ0RQj6eieMwHtkw3u6M2-DwyXkYK-AtoPiLJopyTFDh55Dxg/exec";
+    const DATABASE_URL = "https://script.google.com/macros/s/AKfycbzs1dTTHkgjnJ5SQH73O-4gbeB8jgzMx8R7Xf8pLRNrb78IJqMcIgKCy1lIGgTYpG1EgA/exec";
 
     let adminPass = localStorage.getItem("system_admin_password") || "";
 
@@ -238,7 +237,7 @@
       loadInitialData();
     }
 
-    // CORS Safe Request Wrapper
+    // CORS Safe Request Wrapper with Auto-Logout on Authorization failure
     async function makeSecurePost(payload) {
       try {
         const res = await fetch(DATABASE_URL, {
@@ -249,7 +248,17 @@
           body: JSON.stringify(payload),
           redirect: "follow"
         });
-        return await res.json();
+        const data = await res.json();
+        
+        // सुरक्षा जांच: यदि सर्वर अनऑथराइज्ड बताता है, तो तुरंत लॉगआउट करें
+        if (data.error === "Unauthorized Admin") {
+          alert("त्रुटि: एडमिन ऑथराइजेशन फेल! कृपया फिर से लॉगिन करें।");
+          localStorage.removeItem("system_admin_password");
+          location.reload();
+          return { success: false, error: "Unauthorized Admin" };
+        }
+        
+        return data;
       } catch (err) {
         return { success: false, error: "Network Error: " + err.message };
       }
