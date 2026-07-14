@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Watch Anime Online</title>
+  <title>Watch Anime Studio - Free Anime Sub/Dub in Hindi</title>
+  
+  <!-- Advanced SEO Meta Tags -->
+  <meta name="description" content="Stream or download free Anime Hindi Sub/Dub, Korean Drama (K-Drama), and Chinese Donghua in Hindi. Watch the latest Anime episodes, Movies, and read Manga online for free.">
+  <meta name="keywords" content="Hindi sub anime, Hindi sub series, Hindi sub donghua, Hindi sub doungwa, K drama Hindi sub, Hindi dub movies, Hindi dub series, Hindi dub anime, Hindi sub manga, Chinese anime hindi subbed, Korean drama hindi dubbed, anime in hindi, watch anime online free, free download anime hindi, watch donghua hindi, free manga hindi subbed">
+  <meta name="robots" content="index, follow">
+  
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root { 
@@ -124,6 +130,19 @@
     .modal-box button { background: var(--primary); color: white; padding: 14px; border: none; border-radius: 8px; margin: 8px 0; cursor: pointer; font-weight: bold; width: 100%; }
     .close-modal { position: absolute; top: 18px; right: 18px; font-size: 24px; cursor: pointer; color: #777; }
 
+    /* SEO Elegant Tag Cloud Style */
+    .seo-tag-cloud {
+      opacity: 0.18;
+      font-size: 11px;
+      text-align: center;
+      padding: 25px;
+      line-height: 1.8;
+      border-top: 1px solid var(--border);
+      margin-top: 50px;
+      letter-spacing: 0.5px;
+      text-transform: capitalize;
+    }
+
     @media (max-width: 768px) {
       .header { padding: 12px 15px; flex-wrap: wrap; gap: 12px; }
       .search-bar { order: 3; margin: 0; width: 100%; flex: 1 1 100%; }
@@ -167,12 +186,17 @@
     </div>
   </div>
 
+  <!-- SEO Footer Keyword Area for Crawler Bots -->
+  <div class="seo-tag-cloud">
+    <strong>Popular Tags:</strong> Hindi sub anime, Hindi sub series, Hindi sub donghua, Hindi sub doungwa, K drama Hindi sub, Hindi dub movies, Hindi dub series, Hindi dub anime, Hindi sub manga, Korean drama hindi subbed, Chinese anime hindi subbed, watch anime in hindi, download anime hindi subbed, free manga hindi translation, watch donghua online, anime hindi dubbing.
+  </div>
+
   <div class="modal" id="modal">
     <div class="modal-box" id="modalContent"></div>
   </div>
 
   <script>
-    const DATABASE_URL = "https://script.google.com/macros/s/AKfycbzs1dTTHkgjnJ5SQH73O-4gbeB8jgzMx8R7Xf8pLRNrb78IJqMcIgKCy1lIGgTYpG1EgA/exec";
+    const DATABASE_URL = "https://script.google.com/macros/s/AKfycbz10cUTT2dgJ6nQzkt0SnQ0RQj6eieMwHtkw3u6M2-DwyXkYK-AtoPiLJopyTFDh55Dxg/exec";
 
     let allPosts = [];
     let settings = {};
@@ -270,7 +294,7 @@
           <h3>Episodes List</h3>
           <div class="episodes-grid">
             ${episodes.map(ep => `
-              <button onclick="handleEpisode('${ep.id}', '${post.name}', '${ep.episode_label}')">${ep.episode_label}</button>
+              <button onclick="handleEpisode('${ep.id}', '${post.name.replace(/'/g, "\\'")}', '${ep.episode_label.replace(/'/g, "\\'")}')">${ep.episode_label}</button>
             `).join("")}
           </div>
         </div>
