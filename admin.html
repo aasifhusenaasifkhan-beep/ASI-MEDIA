@@ -38,7 +38,7 @@
     .form-control { width: 100%; padding: 12px 16px; background: #1a1a1f; border: 1px solid var(--border); border-radius: 8px; color: white; font-size: 15px; }
     textarea.form-control { height: 120px; resize: none; }
     .btn-submit { background: var(--primary); color: white; padding: 14px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
-    .btn-submit:disabled { background: #555; }
+    .btn-submit:disabled { background: #555; cursor: not-allowed; }
 
     .scroll-list { max-height: 350px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: #0f0f11; }
     .list-item { padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
@@ -50,9 +50,18 @@
     
     .btn-helper { background: #0088cc; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: bold; margin-top: 5px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
     .btn-helper:hover { background: #006699; }
+    
+    .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10001; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; color: white; }
   </style>
 </head>
 <body>
+
+  <div class="loading-overlay" id="loadingOverlay">
+    <div style="text-align: center;">
+      <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 40px; color: var(--primary); margin-bottom: 15px;"></i>
+      <div>कृपया प्रतीक्षा करें (Processing)...</div>
+    </div>
+  </div>
 
   <div id="loginScreen">
     <div class="login-box">
@@ -92,8 +101,8 @@
       <form id="addPostForm" onsubmit="submitPost(event)">
         <div class="form-group">
           <label>Poster Image URL (Optional)</label>
-          <input type="text" id="postImage" class="form-control" placeholder="https://domain.com/image.jpg (Khaali chodne par custom box dikhega)">
-          <a href="https://postimages.org" target="_blank" class="btn-helper"><i class="fa-solid fa-upload"></i> Upload Image for Free (PostImages)</a>
+          <input type="text" id="postImage" class="form-control" placeholder="https://domain.com/image.jpg">
+          <a href="https://postimages.org" target="_blank" class="btn-helper"><i class="fa-solid fa-upload"></i> Upload Image for Free</a>
         </div>
         <div class="form-group">
           <label>Anime Name</label>
@@ -140,7 +149,7 @@
       <h3>Rotational Shortener Systems</h3>
       <div class="scroll-list" id="shortenerList" style="margin-bottom: 25px;"></div>
       
-      <h4>Configure Shortener Account (Max 3 recommended)</h4>
+      <h4>Configure Shortener Account (Max 3)</h4>
       <form id="shortenerForm" onsubmit="submitShortener(event)">
         <div class="form-group">
           <label>Dashboard URL (Bina https के)</label>
@@ -157,7 +166,7 @@
     <!-- 5. PREMIUM USERS -->
     <div id="premiumSec" class="section-card">
       <h3>Active Premium Accounts</h3>
-      <div class="scroll-list" id="premiumUsersList" style="margin-bottom: 25px;">Loading...</div>
+      <div class="scroll-list" id="premiumUsersList" style="margin-bottom: 25px;"></div>
 
       <h4>Register Gmail Premium Account (Auto 28 Days Expiry)</h4>
       <form id="premiumForm" onsubmit="submitPremium(event)">
@@ -176,7 +185,7 @@
     <!-- 6. PAID REQUESTS -->
     <div id="paidRequestsSec" class="section-card">
       <h3>Paid Private Requests (Password protected)</h3>
-      <div class="scroll-list" id="paidRequestsList" style="margin-bottom: 25px;">Loading...</div>
+      <div class="scroll-list" id="paidRequestsList" style="margin-bottom: 25px;"></div>
 
       <h4>Add Private Video Password & Link</h4>
       <form id="paidRequestsForm" onsubmit="submitPaidRequest(event)">
@@ -228,17 +237,17 @@
   </div>
 
   <script>
-    const DATABASE_URL = "https://script.google.com/macros/s/AKfycbzs1dTTHkgjnJ5SQH73O-4gbeB8jgzMx8R7Xf8pLRNrb78IJqMcIgKCy1lIGgTYpG1EgA/exec";
+    const DATABASE_URL = "https://script.google.com/macros/s/AKfycbz10cUTT2dgJ6nQzkt0SnQ0RQj6eieMwHtkw3u6M2-DwyXkYK-AtoPiLJopyTFDh55Dxg/exec";
 
-    let adminPass = localStorage.getItem("system_admin_password") || "";
+    let adminPass = ""; // No LocalStorage! Local Memory only.
 
-    if (adminPass) {
-      document.getElementById("loginScreen").style.display = "none";
-      loadInitialData();
+    function showSpinner(show) {
+      document.getElementById("loadingOverlay").style.display = show ? "flex" : "none";
     }
 
-    // CORS Safe Request Wrapper
+    // CORS Safe, Single-Threaded Fast Post Request Wrapper
     async function makeSecurePost(payload) {
+      showSpinner(true);
       try {
         const res = await fetch(DATABASE_URL, {
           method: "POST",
@@ -249,36 +258,113 @@
           redirect: "follow"
         });
         const data = await res.json();
+        showSpinner(false);
         
-        // सुरक्षा जांच: यदि सर्वर अनऑथराइज्ड बताता है, तो तुरंत लॉगआउट करें
         if (data.error === "Unauthorized Admin") {
-          // केवल तब रीलोड करें जब यूजर पहले से लॉग इन स्थिति में था
-          if (localStorage.getItem("system_admin_password")) {
-            alert("त्रुटि: एडमिन ऑथराइजेशन फेल! कृपया फिर से लॉगिन करें।");
-            localStorage.removeItem("system_admin_password");
-            location.reload();
-          }
+          alert("त्रुटि: एडमिन ऑथराइजेशन फेल! दोबारा लॉगिन करें।");
+          location.reload();
           return { success: false, error: "Unauthorized Admin" };
         }
-        
         return data;
       } catch (err) {
+        showSpinner(false);
         return { success: false, error: "Network Error: " + err.message };
       }
     }
 
     async function attemptLogin() {
-      const pass = document.getElementById("adminPassInput").value;
-      const data = await makeSecurePost({ action: "adminLogin", auth_password: pass });
-      if (data.success) {
-        adminPass = pass;
-        localStorage.setItem("system_admin_password", pass);
-        document.getElementById("loginScreen").style.display = "none";
-        loadInitialData();
-      } else {
-        // यदि लॉगिन स्क्रीन पर हैं तो केवल 'गलत पासवर्ड' दिखाएं, डबल अलर्ट नहीं
-        alert("गलत पासवर्ड! कृपया सही पासवर्ड डालें।");
+      const pass = document.getElementById("adminPassInput").value.trim();
+      if (!pass) {
+        alert("कृपया पासवर्ड डालें!");
+        return;
       }
+      
+      // Load all dashboard data in exactly ONE fast request
+      const data = await makeSecurePost({ action: "getDashboardData", auth_password: pass });
+      if (data.success) {
+        adminPass = pass; // Store in memory
+        document.getElementById("loginScreen").style.display = "none";
+        renderDashboard(data);
+      } else {
+        alert(data.error || "गलत पासवर्ड! कृपया अपनी Google Sheet के Settings टैब में पासवर्ड चेक करें।");
+      }
+    }
+
+    async function refreshDashboard() {
+      const data = await makeSecurePost({ action: "getDashboardData", auth_password: adminPass });
+      if (data.success) {
+        renderDashboard(data);
+      }
+    }
+
+    function renderDashboard(data) {
+      // 1. Render Posts for ep select
+      const selection = document.getElementById("selectionList");
+      selection.innerHTML = data.posts.map(post => `
+        <div class="list-item">
+          <span>${post.name}</span>
+          <button class="delete-btn" style="background:#0066cc;" onclick="openEpisodeModal('${post.id}', '${post.name.replace(/'/g, "\\'")}')">Add Ep</button>
+        </div>
+      `).join("");
+
+      // 2. Render Posts for deletion
+      const deletion = document.getElementById("deletionList");
+      deletion.innerHTML = data.posts.map(post => `
+        <div class="list-item">
+          <span>${post.name}</span>
+          <button class="delete-btn" onclick="deleteFullPost('${post.id}')">Delete Post</button>
+        </div>
+      `).join("");
+
+      // 3. Render Shorteners
+      const shortenersList = document.getElementById("shortenerList");
+      if (data.shorteners.length === 0) {
+        shortenersList.innerHTML = "<div style='padding:15px; color:#555;'>No shorteners set.</div>";
+      } else {
+        shortenersList.innerHTML = data.shorteners.map(sh => `
+          <div class="list-item">
+            <div><strong>${sh.dashboard_url}</strong></div>
+            <button class="delete-btn" onclick="deleteShortener('${sh.id}')">Delete</button>
+          </div>
+        `).join("");
+      }
+
+      // 4. Render Premium Users
+      const premiumList = document.getElementById("premiumUsersList");
+      if (data.premiumUsers.length === 0) {
+        premiumList.innerHTML = "<div style='padding:15px; color:#555;'>No premium accounts found.</div>";
+      } else {
+        premiumList.innerHTML = data.premiumUsers.map(u => `
+          <div class="list-item">
+            <div>
+              <strong>${u.gmail}</strong><br>
+              <small style="color:#777;">Pass: ${u.password} | Expiry: ${new Date(u.expires_at).toLocaleDateString()}</small>
+            </div>
+            <button class="delete-btn" onclick="deletePremium('${u.id}')">Delete</button>
+          </div>
+        `).join("");
+      }
+
+      // 5. Render Paid Requests
+      const paidList = document.getElementById("paidRequestsList");
+      if (data.paidRequests.length === 0) {
+        paidList.innerHTML = "<div style='padding:15px; color:#555;'>No locked links found.</div>";
+      } else {
+        paidList.innerHTML = data.paidRequests.map(req => `
+          <div class="list-item">
+            <div>
+              <strong>Unlock Code: ${req.password}</strong><br>
+              <small style="color:#777; word-break: break-all;">Target: ${req.original_link}</small>
+            </div>
+            <button class="delete-btn" onclick="deletePaidRequest('${req.id}')">Delete</button>
+          </div>
+        `).join("");
+      }
+
+      // 6. Set Settings inputs
+      document.getElementById("chanLink").value = data.settings.channel_link || "";
+      document.getElementById("groupLink").value = data.settings.group_link || "";
+      document.getElementById("playerPass").value = data.settings.player_password || "";
     }
 
     async function changeAdminPassword(e) {
@@ -286,20 +372,11 @@
       const newPass = document.getElementById("newAdminPass").value.trim();
       const data = await makeSecurePost({ action: "changeAdminPassword", auth_password: adminPass, new_password: newPass });
       if(data.success) {
-        alert("पासवर्ड सफलतापूर्वक बदल गया! दोबारा लॉगिन करें।");
-        localStorage.removeItem("system_admin_password");
+        alert("पासवर्ड सफलतापूर्वक बदल गया! कृपया दोबारा लॉगिन करें।");
         location.reload();
       } else {
         alert("त्रुटि: " + data.error);
       }
-    }
-
-    function loadInitialData() {
-      fetchPosts();
-      fetchShorteners();
-      fetchPremiumUsers();
-      fetchPaidRequests();
-      fetchSettings();
     }
 
     function toggleSidebar() {
@@ -377,30 +454,6 @@
       if (parsedData.story) document.getElementById("postStory").value = parsedData.story;
     }
 
-    async function fetchPosts() {
-      const res = await fetch(DATABASE_URL + "?action=getPosts");
-      const data = await res.json();
-      
-      const selection = document.getElementById("selectionList");
-      const deletion = document.getElementById("deletionList");
-      
-      const listHtml = data.map(post => `
-        <div class="list-item">
-          <span>${post.name}</span>
-          <button class="delete-btn" style="background:#0066cc;" onclick="openEpisodeModal('${post.id}', '${post.name}')">Add Ep</button>
-        </div>
-      `).join("");
-      
-      selection.innerHTML = listHtml;
-
-      deletion.innerHTML = data.map(post => `
-        <div class="list-item">
-          <span>${post.name}</span>
-          <button class="delete-btn" onclick="deleteFullPost('${post.id}')">Delete Post</button>
-        </div>
-      `).join("");
-    }
-
     function openEpisodeModal(postId, postName) {
       document.getElementById("modalContent").innerHTML = `
         <span class="close-modal" onclick="closeModal()">&times;</span>
@@ -442,7 +495,7 @@
         alert("सफलतापूर्वक पोस्ट बन गई!");
         document.getElementById("addPostForm").reset();
         document.getElementById("autoDetectInput").value = "";
-        fetchPosts();
+        refreshDashboard();
       } else {
         alert("त्रुटि: " + data.error);
       }
@@ -472,27 +525,10 @@
         const data = await makeSecurePost({ action: "deletePost", auth_password: adminPass, post_id: id });
         if(data.success) {
           alert("पोस्ट और एपिसोड्स हटा दिए गए।");
-          fetchPosts();
+          refreshDashboard();
         } else {
           alert("त्रुटि: " + data.error);
         }
-      }
-    }
-
-    async function fetchShorteners() {
-      const data = await makeSecurePost({ action: "getShorteners", auth_password: adminPass });
-      const list = document.getElementById("shortenerList");
-      if(data.error) {
-        list.innerHTML = `<div style='padding:15px; color:#555;'>No shorteners set.</div>`;
-      } else if(data.length === 0) {
-        list.innerHTML = "<div style='padding:15px; color:#555;'>No shorteners set.</div>";
-      } else {
-        list.innerHTML = data.map(sh => `
-          <div class="list-item">
-            <div><strong>${sh.dashboard_url}</strong></div>
-            <button class="delete-btn" onclick="deleteShortener('${sh.id}')">Delete</button>
-          </div>
-        `).join("");
       }
     }
 
@@ -508,32 +544,16 @@
       if(data.success) {
         alert("शॉर्टनर जोड़ा गया!");
         document.getElementById("shortenerForm").reset();
-        fetchShorteners();
+        refreshDashboard();
       } else {
         alert("त्रुटि: " + data.error);
       }
     }
 
     async function deleteShortener(id) {
-      const data = await makeSecurePost({ action: "deleteShortener", auth_password: adminPass, id: id });
-      if(data.success) fetchShorteners();
-    }
-
-    async function fetchPremiumUsers() {
-      const data = await makeSecurePost({ action: "getPremiumUsers", auth_password: adminPass });
-      const list = document.getElementById("premiumUsersList");
-      if (data.error || data.length === 0) {
-        list.innerHTML = "<div style='padding:15px; color:#555;'>No premium accounts found.</div>";
-      } else {
-        list.innerHTML = data.map(u => `
-          <div class="list-item">
-            <div>
-              <strong>${u.gmail}</strong><br>
-              <small style="color:#777;">Pass: ${u.password} | Expiry: ${new Date(u.expires_at).toLocaleDateString()}</small>
-            </div>
-            <button class="delete-btn" onclick="deletePremium('${u.id}')">Delete</button>
-          </div>
-        `).join("");
+      if(confirm("क्या आप इस शॉर्टनर को हटाना चाहते हैं?")) {
+        const data = await makeSecurePost({ action: "deleteShortener", auth_password: adminPass, id: id });
+        if(data.success) refreshDashboard();
       }
     }
 
@@ -549,32 +569,16 @@
       if(data.success) {
         alert("प्रीमियम यूजर पंजीकृत हो गया!");
         document.getElementById("premiumForm").reset();
-        fetchPremiumUsers();
+        refreshDashboard();
       } else {
         alert("त्रुटि: " + data.error);
       }
     }
 
     async function deletePremium(id) {
-      const data = await makeSecurePost({ action: "deletePremium", auth_password: adminPass, id: id });
-      if(data.success) fetchPremiumUsers();
-    }
-
-    async function fetchPaidRequests() {
-      const data = await makeSecurePost({ action: "getPaidRequests", auth_password: adminPass });
-      const list = document.getElementById("paidRequestsList");
-      if(data.error || data.length === 0) {
-        list.innerHTML = "<div style='padding:15px; color:#555;'>No locked links found.</div>";
-      } else {
-        list.innerHTML = data.map(req => `
-          <div class="list-item">
-            <div>
-              <strong>Unlock Code: ${req.password}</strong><br>
-              <small style="color:#777; word-break: break-all;">Target: ${req.original_link}</small>
-            </div>
-            <button class="delete-btn" onclick="deletePaidRequest('${req.id}')">Delete</button>
-          </div>
-        `).join("");
+      if(confirm("क्या आप इस प्रीमियम यूजर को हटाना चाहते हैं?")) {
+        const data = await makeSecurePost({ action: "deletePremium", auth_password: adminPass, id: id });
+        if(data.success) refreshDashboard();
       }
     }
 
@@ -590,22 +594,17 @@
       if(data.success) {
         alert("लॉक किया गया लिंक जोड़ दिया गया!");
         document.getElementById("paidRequestsForm").reset();
-        fetchPaidRequests();
+        refreshDashboard();
       } else {
         alert("त्रुटि: " + data.error);
       }
     }
 
     async function deletePaidRequest(id) {
-      const data = await makeSecurePost({ action: "deletePaidRequest", auth_password: adminPass, id: id });
-      if(data.success) fetchPaidRequests();
-    }
-
-    async function fetchSettings() {
-      const res = await fetch(DATABASE_URL + "?action=getSettings");
-      const data = await res.json();
-      document.getElementById("chanLink").value = data.channel_link || "";
-      document.getElementById("groupLink").value = data.group_link || "";
+      if(confirm("क्या आप इस लॉक लिंक को हटाना चाहते हैं?")) {
+        const data = await makeSecurePost({ action: "deletePaidRequest", auth_password: adminPass, id: id });
+        if(data.success) refreshDashboard();
+      }
     }
 
     async function submitSettings(e) {
@@ -620,6 +619,7 @@
       const data = await makeSecurePost(body);
       if(data.success) {
         alert("सेटिंग्स अपडेट हो गयीं!");
+        refreshDashboard();
       } else {
         alert("त्रुटि: " + data.error);
       }
